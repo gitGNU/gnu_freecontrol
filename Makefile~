@@ -33,4 +33,4 @@ LadderExec: LadderExec.o
 	gcc -o LadderExec LadderExec.o
 
 clean:
-	rm -f *.o freecontrol MemoryManager LadderExec
+	rm -f *.o proyecto
