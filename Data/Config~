@@ -1,2 +1,2 @@
-./MemoryManager 1000 > MM.log &
-./LadderExec Prog.Lad > LE.log&
+./MemoryManager &
+./MemoryManager &

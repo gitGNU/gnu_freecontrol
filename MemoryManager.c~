@@ -17,11 +17,10 @@
 
 */
 
-#define LOCK_FILE	"MemoryManager.lock"
-#define LOG_FILE	"MemoryManager.log"
-
 #include "Common.c"
 
+#define LOCK_FILE	"MemoryManager.lock"
+#define LOG_FILE	"MemoryManager.log"
 
 struct mymsgbuf {
 	long mtype;

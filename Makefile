@@ -20,10 +20,10 @@ proyecto: freecontrol.o MemoryManager LadderExec
 freecontrol.o: freecontrol.c
 	gcc -c freecontrol.c
 
-MemoryManager.o: MemoryManager.c
+MemoryManager.o: MemoryManager.c Common.c
 	gcc -c MemoryManager.c
 
-MemoryManager: MemoryManager.o
+MemoryManager: MemoryManager.o 
 	gcc -o MemoryManager MemoryManager.o
 
 LadderExec.o: LadderExec.c

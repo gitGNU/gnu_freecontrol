@@ -23,7 +23,7 @@ freecontrol.o: freecontrol.c
 MemoryManager.o: MemoryManager.c
 	gcc -c MemoryManager.c
 
-MemoryManager: MemoryManager.o
+MemoryManager: MemoryManager.o 
 	gcc -o MemoryManager MemoryManager.o
 
 LadderExec.o: LadderExec.c
@@ -33,4 +33,4 @@ LadderExec: LadderExec.o
 	gcc -o LadderExec LadderExec.o
 
 clean:
-	rm -f *.o proyecto
+	rm -f *.o freecontrol MemoryManager LadderExec

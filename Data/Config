@@ -1,2 +1,2 @@
-./MemoryManager 1000 &
-./LadderExec Prog.Lad &
+./MemoryManager -l 
+
