@@ -17,6 +17,11 @@
 
 */
 
+#define LOCK_FILE	"FreeControl.lock"
+#define LOG_FILE	"FreeControl.log"
+#define RUNNING_DIR	"/tmp"
+#define APP_DIR		"/home/pc/freecontrol/"
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,10 +30,22 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
 
 const char* program_name;
 
 extern char** environ;
+
+
+struct config_s {
+	char app[100];
+	int app_id;
+	char app_ch;
+	};
+
+struct config_s config[100];
 
 struct mymsgbuf {
 	long mtype;
@@ -66,6 +83,37 @@ int abrir_prog(char s[200], int i)
 	return (system(s));
 }
 
+int open_prog(char s[100], int i) 
+{
+	int n;
+	char s1[100];
+	char s2[100];
+	n=fork();
+	printf("----\n");
+	if (n<0) {
+		printf("...\n");
+		exit(1);
+		}
+	if (n>0) {
+		printf("+++\n");
+		return(n);
+		}
+	while (s[strlen(s)-1]<' ' && strlen(s)>1)
+		s[strlen(s)-1]=0;
+	printf("000 %s\n", s);
+	strcpy(s1,&s[2]);
+	printf("000 %s\n", s1);
+	strcpy(s2,APP_DIR);
+	strcat(s2,s1);
+	//strcat(s2,0);
+	//strcat(s1,0);
+	printf("000 %s\n", s2);
+	//printf("--- %n\n", errno);
+	n=execl(s2,s1,"-l", (char *)0);
+	printf("111 \n");
+	exit(0);
+}
+
 int print_copyright()
 {
 	printf("FreeControl\n");
@@ -94,6 +142,189 @@ int print_usage()
 	printf("        -v   --view    Shows the state of the program an sends view to all the\n");
 	printf("                      childs.\n");
 	printf("        -h   --help    Shows this help.\n\n");
+}
+
+void log_message(filename,message)
+char *filename;
+char *message;
+{
+FILE *logfile;
+	logfile=fopen(filename,"a");
+	if(!logfile) return;
+	fprintf(logfile,"%s\n",message);
+	fclose(logfile);
+}
+
+void signal_handler(sig)
+int sig;
+{
+	switch(sig) {
+	case SIGHUP:
+		log_message(LOG_FILE,"hangup signal catched");
+		break;
+	case SIGTERM:
+		log_message(LOG_FILE,"terminate signal catched");
+		exit(0);
+		break;
+	}
+}
+
+void daemonize()
+{
+	int i,lfp;
+	char str[10];
+
+	i=fork();
+	if (i<0) exit(1); /* fork error */
+	if (i>0) exit(0); /* parent exits */
+	/* child (daemon) continues */
+	setsid(); /* obtain a new process group */
+	for (i=getdtablesize();i>=0;--i) close(i); /* close all descriptors */
+	i=open("/dev/null",O_RDWR); dup(i); dup(i); /* handle standart I/O */
+	umask(027); /* set newly created file permissions */
+	//chdir(RUNNING_DIR); /* change running directory */
+	//lfp=open(LOCK_FILE,O_RDWR|O_CREAT,0640);
+	//if (lfp<0) exit(1); /* can not open */
+	//if (lockf(lfp,F_TLOCK,0)<0) exit(0); /* can not lock */
+	/* first instance continues */
+	//sprintf(str,"%d\n",getpid());
+	//write(lfp,str,strlen(str)); /* record pid to lockfile */
+	signal(SIGCHLD,SIG_IGN); /* ignore child */
+	signal(SIGTSTP,SIG_IGN); /* ignore tty signals */
+	signal(SIGTTOU,SIG_IGN);
+	signal(SIGTTIN,SIG_IGN);
+	signal(SIGHUP,signal_handler); /* catch hangup signal */
+	signal(SIGTERM,signal_handler); /* catch kill signal */
+}
+
+void load_config() {
+
+	if(getppid()==1) {
+		printf("FreeControl already loaded");
+		return; /* already a daemon */
+		}
+
+	char lock_file[200];
+	strcpy(lock_file, RUNNING_DIR);
+	strcat(lock_file, "/");
+	strcat(lock_file, LOCK_FILE);
+	int i,lfp;
+	char str[10];
+
+	i=fork();
+	if (i<0) exit(1); /* fork error */
+	if (i>0) return; /* parent exits */
+	/* child (daemon) continues */
+	setsid(); /* obtain a new process group */
+//	for (i=getdtablesize();i>=0;--i) close(i); /* close all descriptors */
+	//i=open("/dev/null",O_RDWR); dup(i); dup(i); /* handle standart I/O */
+
+	umask(027);
+	printf("----2\n");
+	//chdir(RUNNING_DIR); /* change running directory */
+	lfp=open(lock_file,O_RDWR|O_CREAT,0640);
+	if (lfp<0) {
+		printf("FreeControl already loaded");
+		return; /* already a daemon */
+		
+		} /* can not open */
+	if (lockf(lfp,F_TLOCK,0)<0) { /* can not lock */
+		printf("FreeControl already loaded");
+		return; /* already a daemon */		
+		} /* can not open */
+
+	/* first instance continues */
+	sprintf(str,"%d\n",getpid());
+	write(lfp,str,strlen(str)); /* record pid to lockfile */
+
+	signal(SIGCHLD,SIG_IGN); /* ignore child */
+	signal(SIGTSTP,SIG_IGN); /* ignore tty signals */
+	signal(SIGTTOU,SIG_IGN);
+	signal(SIGTTIN,SIG_IGN);
+	signal(SIGHUP,signal_handler); /* catch hangup signal */
+	signal(SIGTERM,signal_handler); /* catch kill signal */
+
+	key_t key;
+
+	//   Get the main key 'A'
+
+	key = ftok("/tmp",'A');
+
+	if (key == -1)  {
+		printf("Couldn't open the main key.\n");
+		return;
+		}
+
+	//   Open or create the main message queue
+	int msgqueue_id;
+	if ((msgqueue_id = msgget(key, IPC_CREAT|0660)) ==-1)
+	{
+		printf("Couldn not open the main message queue\n");
+		return;
+	}
+
+	printf("------3\n");
+	//   Open all the programs in /Data/Config
+
+	FILE * Archivo;
+	char s[200];
+	Archivo=fopen("./Data/Config","r");
+	
+	if (Archivo==NULL) {
+		printf("Cannot open the Config file.\n");
+		return;
+	}
+	i=0;
+	int error;
+	while (fgets(s,200,Archivo)!=NULL)
+  	{
+		printf("Read: %s \n",s);
+		strcpy(config[i].app, s);
+		config[i].app_ch=i+'B';
+		i++;
+	}
+	strcpy(config[i].app, "");
+
+	for (i=0; config[i].app!= ""; i++) {
+		config[i].app_id= open_prog(s,i);
+		if (config[i].app_id<0)
+
+		{
+			printf("Cannot run: %s \n",s);
+			return;
+		}
+		printf("Waiting response -- \n");
+		espera_ok(msgqueue_id, i);
+  	}
+
+	fclose (Archivo);
+	
+	//daemonize();
+
+	for (;;) {
+		sleep(10);
+		}
+
+}
+
+void terminate() {
+
+	int lfp,n;
+	char lock_file[200];
+	strcpy(lock_file, RUNNING_DIR);
+	strcat(lock_file, "/");
+	strcat(lock_file, LOCK_FILE);
+	FILE * pFile;
+
+	pFile = fopen (lock_file,"r");
+  	if (pFile<0) {
+		printf("FreeControl not loaded");
+		return;
+		} /* can not open */
+	fscanf (pFile, "%d", &n);
+        fclose (pFile);
+	printf("-%d--\n",n);
+	kill(n,SIGTERM);
 }
 
 int main (int argc, char* argv[])
@@ -128,6 +359,7 @@ int main (int argc, char* argv[])
 		{
 		case 'l':
 			printf("Option -l\n");
+			load_config();
 			break;
 		case 'r':
 			printf("Option -r\n");
@@ -137,6 +369,7 @@ int main (int argc, char* argv[])
 			break;
 		case 'k':
 			printf("Option -k\n");
+			terminate();
 			break;
 		case 'v':
 			printf("Option -v\n");
@@ -151,67 +384,5 @@ int main (int argc, char* argv[])
 	}
 	while (next_option != -1);
 
-	key_t key;
-
-	//   Get the main key 'A'
-
-	key = ftok(".",'A');
-
-	if (key == -1)  {
-		printf("Couldn't open the main key.\n");
-		return (1);
-		}
-
-	//   Open or create the main message queue
-	int msgqueue_id;
-	if ((msgqueue_id = msgget(key, IPC_CREAT|0660)) ==-1)
-	{
-		printf("Couldn not open the main message queue\n");
-		return(1);
-	}
-
-	//   Open all the programs in /Data/Config
-
-	FILE * Archivo;
-	char s[200];
-	Archivo=fopen("./Data/Config","r");
-	
-	if (Archivo==NULL) {
-		printf("Cannot open the Config file.\n");
-	}
-	int i=0;
-	int error;
-	while (fgets(s,200,Archivo)!=NULL)
-  	{
-		printf("Read: %s \n",s);
-		//error =	system(s);
-		error = abrir_prog(s,i);
-		if (error!= 0)
-		{
-			printf("Cannot run: %s \n",s);
-			return(1);
-		}
-		i+=100;
-		printf("Waiting response -- \n");
-		espera_ok(msgqueue_id, i);
-  	}
-
-	fclose (Archivo);
-	
-	pid_t father, son;
-
-	father = getpid();
-
-	if ((son=fork())==0)
-		{
-		for (i=0; i<100; i++) {
-			sleep(1);
-			//printf("-\n");
-			}
-		}
-	
-	return 0;
 }
-
-
 
