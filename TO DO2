@@ -1,0 +1,11 @@
+Urgent
+
+- Implement Tag Mannager.
+
+-----------------------------------------------------------------
+Previous to release
+
+- Review deamonization.  Messages have to be sent to log or error files, not to standard output.
+- Review string management.
+- Review IPCs and keys.
+

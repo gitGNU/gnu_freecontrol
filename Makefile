@@ -1,5 +1,5 @@
 #    This file is part of FreeControl Package
-#    Copyright (C) 2009  Quique Rodiguez <quesoruso74@yahoo.com>
+#    Copyright (C) 2009, 2010  Quique Rodiguez <quesoruso74@yahoo.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -26,11 +26,13 @@ MemoryManager.o: MemoryManager.c Common.c
 MemoryManager: MemoryManager.o 
 	gcc -o MemoryManager MemoryManager.o
 
-LadderExec.o: LadderExec.c
+LadderExec.o: LadderExec.c Common.c
 	gcc -c LadderExec.c
 
 LadderExec: LadderExec.o
 	gcc -o LadderExec LadderExec.o
 
 clean:
-	rm -f *.o freecontrol MemoryManager LadderExec
+	rm -f *.o freecontrol MemoryManager LadderExec *.log Data/MemoryMap.Communication
+
+

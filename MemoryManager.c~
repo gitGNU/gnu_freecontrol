@@ -17,15 +17,35 @@
 
 */
 
-#include "Common.c"
-
 #define LOCK_FILE	"MemoryManager.lock"
 #define LOG_FILE	"MemoryManager.log"
 
+#include "Common.c"
+
+
+char *shmaddr;
+int shared_mem_id;
+int key_proc;
+char* name;
+
 struct mymsgbuf {
 	long mtype;
+	char name[50];
+	int shmid;
+	int shmsize;
 	char mtext[10];
 };
+
+int view_stat() {
+	printf("Printing status.... \n\n");	
+
+	}
+
+int ending() {
+	printf("Ending... \n");
+	shmdt(shmaddr);
+	shmctl(shared_mem_id, IPC_RMID, 0);
+	}
 
 main(int argc, char* argv[]) {
 
@@ -38,9 +58,10 @@ main(int argc, char* argv[]) {
 		return(0);
 	}
 
+	key_proc = -1;
 	int next_option;
 
-	const char* const short_options = "lrskvh";
+	const char* const short_options = "lrskvhn:p:";
 
 	const struct option long_options[] = {
 		{ "load", 0, NULL, 'l' },
@@ -49,11 +70,15 @@ main(int argc, char* argv[]) {
 		{ "kill", 0, NULL, 'k' },
 		{ "view", 0, NULL, 'v' },
 		{ "help", 0, NULL, 'h' },
+		{ "name", 1, NULL, 'n' },
+		{ "proc", 1, NULL, 'p' },
 		{ NULL, 0, NULL, 0 }
 		};
+	printf("------------------------------\n");
 
 	do {
 		next_option = getopt_long (argc, argv, short_options, long_options, NULL);
+		printf("--%d \n", next_option);
 		switch (next_option)
 		{
 		case 'l':
@@ -79,6 +104,14 @@ main(int argc, char* argv[]) {
 		case 'h':
 			print_usage();
 			return(0);
+		case 'n':
+			name = optarg;
+			printf("Name = %s\n", name);
+			break;
+		case 'p':
+			key_proc = atoi(optarg);
+			printf("Key_proc= %d\n",key_proc);
+			break;
 		case '?':
 			print_usage();
 			return(1);
@@ -109,14 +142,36 @@ main(int argc, char* argv[]) {
 		}
 	//   Open or create the main message queue
 	int msgqueue_id;
-	if ((msgqueue_id = msgget(key, IPC_CREAT|0660)) ==-1)
+	if ((msgqueue_id = msgget(key, IPC_CREAT)) ==-1)
 	{
-		//fprintf(Archivo, "Could not open the main message queue\n");
+		printf("Could not open the main message queue\n");
 		return(1);
 	}
 
+	key = key_proc;
+	if (key == -1) {
+		key = ftok(".",'D');
+		}
+
+	if (key == -1)  {
+		printf("Couldn't open the main key.\n");
+		return (1);
+		}
+	//   Open or create the main message queue
+	if ((shared_mem_id = shmget(key, 1000, IPC_CREAT | IPC_EXCL | 0660)) ==-1)
+	{
+		printf("Could not open the shared memory\n");
+		//return(1);
+	}
+
+
+	shmaddr = shmat(shared_mem_id,0,0);
+
+
 	type = 1;
 	qbuf.mtype = type;
+	strcpy(qbuf.name, name);
+	qbuf.shmid = shared_mem_id;
 	char* text;
 	text="OK";
 	//strcpy(qbuf.mtext, &text);
@@ -124,10 +179,10 @@ main(int argc, char* argv[]) {
 	qbuf.mtext[1]='K';
 	qbuf.mtext[2]=0;
 	sleep(5);
-	printf("Sending...\n");	
+	printf("Sending...%d - %s\n", qbuf.mtype, qbuf.mtext);	
 	
 	int error;
-	error =	msgsnd(msgqueue_id, &qbuf, 3, 0);
+	error =	msgsnd(msgqueue_id, &qbuf, sizeof(qbuf)-4, 0);
 
 	printf("Response: %d \n", error);
 	//cant = msgrcv(n+1,  &qbuf, strlen(qbuf.mtext), type, 0);
@@ -139,6 +194,15 @@ main(int argc, char* argv[]) {
 	interval_t.tv_nsec=1000;
 
 	for (;;) {
-		nanosleep(interval_t);
+		//nanosleep(interval_t);
+		sleep(10);
+		printf("msgqueue_id = %d - shared_mem_id = %d - %d \n",msgqueue_id, shared_mem_id, shmaddr[0] );
+		printf("type= %d - text= %s \n",qbuf.mtype, qbuf.mtext);
+		shmaddr[0]++;
+		//error =	msgsnd(msgqueue_id, &qbuf, 3, 0);
+
+		printf("Response: %d \n", error);
+	
+		
 		}
 	}

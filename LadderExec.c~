@@ -35,11 +35,6 @@ int view_stat() {
 
 	}
 
-int ending() {
-	printf("Ending... \n");
-	}
-
-
 main() {
 
 	int i;

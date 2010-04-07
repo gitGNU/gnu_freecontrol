@@ -1,1 +1,2 @@
-./MemoryManager -l
+MemoryManager -n MEM1
+MemoryManager -n MEM2

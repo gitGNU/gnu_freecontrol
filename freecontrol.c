@@ -38,6 +38,8 @@ const char* program_name;
 
 extern char** environ;
 
+FILE * MemoryMap;
+
 struct config_s {
 	char app[100];
 	int app_id;
@@ -48,10 +50,20 @@ struct config_s config[100];
 
 struct mymsgbuf {
 	long mtype;
+	char name[50];
+	int shmid;
+	int shmsize;
 	char mtext[10];
 };
 
-void espera_ok(int qid, int n) {
+void MapWrite(struct mymsgbuf qbuf) {
+	MemoryMap=fopen("./Data/MemoryMap.Communication","a");
+	printf("%s %d %d\n", qbuf.name, qbuf.shmid, qbuf.shmsize);
+	fprintf(MemoryMap,"%s %d %d\n", qbuf.name, qbuf.shmid, qbuf.shmsize);
+	fclose(MemoryMap);
+}
+
+void process_msgs(int qid) {
 	struct mymsgbuf qbuf;
 	long type;
 	int cant;
@@ -61,18 +73,35 @@ void espera_ok(int qid, int n) {
 	do {
 		type = 1;
 		qbuf.mtype = type;
-		printf("-\n");
-		cant = msgrcv(qid,  &qbuf, 10, type, 0);
-		printf(".\n");
-	} while (cant == 0);
+		printf("qid = %d-\n",qid);
+		cant = msgrcv(qid,  &qbuf, sizeof(qbuf)-4, 1, 0);
+		printf("%d -- %d.\n",qid, cant);
+		if (cant==sizeof(qbuf)-4) {
+			printf("OK \n");
+			MapWrite(qbuf);
+		}
+		else if (cant==-1) {
+			printf("--Error in received message \n");
+			sleep(10);		
+			}
+	} while (0);
 	
-}	
+}
 
 int open_prog(char s[100], int i) 
 {
-	int n;
+	int n,j,k;
 	char s1[100];
 	char s2[100];
+	char s3[100];
+	char s4[100];
+	char s5[100];
+	char s6[100];
+	char s7[100];
+	char s8[100];
+	char s9[100];
+	char t2[100];
+
 	n=fork();
 	if (n<0) {
 		printf("...\n");
@@ -84,16 +113,101 @@ int open_prog(char s[100], int i)
 		}
 	while (s[strlen(s)-1]<' ' && strlen(s)>1)
 		s[strlen(s)-1]=0;
+	s3[0]=0;
+	for (j=0;j!=strlen(s);j++) {
+		if (s[j]==' ') break;
+		s3[j]=s[j];
+		s3[j+1]=0;
+		}
+	k = 0;
+	s4[0]=0;
+	s3[j]=0;
+	j++;
+	
+	for (;j<strlen(s);j++) {
+		s4[k]=s[j];
+		s3[j]=0;
+		s4[k+1]=0;
+		k++;
+		}
+	/*if (k!=0) {
+		strcat(s4," ");
+		}
+	printf("s4=%s \n",s4);
+	strcat(s4,"-l");*/
+	s5[0]==0;
+	s6[0]==0;
+	s7[0]==0;
+	s8[0]==0;
+	s9[0]==0;
+	/*k==0;
+	for (j=0;j<strlen(s4);j++) {
+		if (s4[j]=' ') break;
+		s5[k]==s4[k];
+		s5[k+1]==0;
+		k++;
+		}
+	j++;
+	k==0;
+	for (;j<strlen(s4);j++) {
+		if (s4[j]=' ') break;
+		s6[k]==s4[k];
+		s6[k+1]==0;
+		k++;
+		}
+	j++;
+	k==0;
+	for (j=0;j<strlen(s4);j++) {
+		if (s4[j]=' ') break;
+		s7[k]==s4[k];
+		s7[k+1]==0;
+		k++;
+		}
+	j++;	
+	k==0;
+	for (j=0;j<strlen(s4);j++) {
+		if (s4[j]=' ') break;
+		s8[k]==s4[k];
+		s8[k+1]==0;
+		k++;
+		}
+	j++;
+	k==0;
+	for (j=0;j<strlen(s4);j++) {
+		if (s4[j]=' ') break;
+		s9[k]==s4[k];
+		s9[k+1]==0;
+		k++;
+		}
+	*/
+	char *t1;
+	printf("s1=%s - s2=%s - s3=%s - s4=%s - s5=%s \n",s1,s2,s3,s4,s5);
+	t1 = strtok(s4," ");
+	if (t1!=NULL) strcpy(s5,t1);
+      	if (t1!=NULL) t1 = strtok(NULL, " ");
+	if (t1!=NULL) strcpy(s6,t1);
+      	if (t1!=NULL) t1 = strtok(NULL, " ");
+	if (t1!=NULL) strcpy(s7,t1);
+      	if (t1!=NULL) t1 = strtok(NULL, " ");
+	if (t1!=NULL) strcpy(s8,t1);
+      	if (t1!=NULL) t1 = strtok(NULL, " ");
+	if (t1!=NULL) strcpy(s9,t1);
+
 	printf("000 %s\n", s);
-	strcpy(s1,&s[2]);
+	strcpy(s1,&s3[0]);
 	printf("000 %s\n", s1);
 	strcpy(s2,APP_DIR);
 	strcat(s2,s1);
+	//strcat(s4,"-l");
+	//s4[2]=0;
+	
 	//strcat(s2,0);
 	//strcat(s1,0);
-	printf("000 %s\n", s2);
+	sprintf(t2,"-p%d",i);
+	printf("000 %s >%s\n", s2, s4);
+	printf("s1=%s - s2=%s - s3=%s - s4=%s - s5=%s \n",s1,s2,s3,s4,s5);
 	//printf("--- %n\n", errno);
-	n=execl(s2,s1,"-l", (char *)0);
+	n=execl(s2,s1,"-l",t2,s5,s6,s7,s8,s9, (char *)0);
 	printf("111 \n");
 	exit(0);
 }
@@ -101,7 +215,7 @@ int open_prog(char s[100], int i)
 int print_copyright()
 {
 	printf("FreeControl\n");
-	printf("Copyright (C) 2009  Quique Rodiguez <quesoruso74@yahoo.com>\n\n");
+	printf("Copyright (C) 2009, 2010  Quique Rodiguez <quesoruso74@yahoo.com>\n\n");
 	printf("This program is free software: you can redistribute it and/or modify\n");
 	printf("it under the terms of the GNU General Public License as published by\n");
 	printf("the Free Software Foundation, either version 3 of the License, or\n");
@@ -140,8 +254,34 @@ FILE *logfile;
 void signal_handler(sig)
 int sig;
 {
+	int i;
+	int status;
+	struct timespec interval_t;
+	interval_t.tv_sec=0;
+	interval_t.tv_nsec=10000;
+
 	switch(sig) {
+	case SIGUSR1:
+		for (i=0; strcmp(config[i].app,"")!= 0; i++) {
+		if (config[i].app_id>0)
+			{
+			printf("%s\n", config[i].app);
+			printf("     PID: %d \n\n", config[i].app_id);
+			kill(config[i].app_id, SIGUSR1);
+			nanosleep(interval_t);
+			}		
+	  	}
+		log_message(LOG_FILE,"USR1 signal catched");
+		break;
+
 	case SIGTERM:
+		for (i=0; strcmp(config[i].app,"")!= 0; i++) {
+		if (config[i].app_id>0)
+			{
+			printf("Killing %d - %s\n", config[i].app_id, config[i].app);
+			kill(config[i].app_id, SIGTERM);
+			}		
+	  	}
 		log_message(LOG_FILE,"terminate signal catched");
 		exit(0);
 		break;
@@ -172,7 +312,7 @@ void daemonize()
 	signal(SIGTSTP,SIG_IGN); /* ignore tty signals */
 	signal(SIGTTOU,SIG_IGN);
 	signal(SIGTTIN,SIG_IGN);
-	signal(SIGHUP,signal_handler); /* catch hangup signal */
+	signal(SIGHUP,SIG_IGN); /* ignore hangup signal */
 	signal(SIGTERM,signal_handler); /* catch kill signal */
 }
 
@@ -224,13 +364,14 @@ void load_config() {
 	signal(SIGTTOU,SIG_IGN);
 	signal(SIGTTIN,SIG_IGN);
 	signal(SIGHUP,SIG_IGN); /* ignore hangup signal */
+	signal(SIGUSR1,signal_handler);
 	signal(SIGTERM,signal_handler); /* catch kill signal */
 
 	key_t key;
 
 	//   Get the main key 'A'
 
-	key = ftok(TEMP_DIR,'A');
+	key = ftok(".",'A');
 
 	if (key == -1)  {
 		log_message(LOG_FILE,"Couldn't open the main key.");
@@ -264,33 +405,45 @@ void load_config() {
 
 	while (fgets(s,200,Archivo)!=NULL)
   	{
-		//printf("Read: %s \n",s);
+		printf("Read: %s \n",s);
 		strcpy(config[i].app, s);
 		config[i].app_ch=i+'B';
 		i++;
 	}
 
 	strcpy(config[i].app, "");
+	fclose (Archivo);
 
-	for (i=0; config[i].app!= ""; i++) {
-		config[i].app_id= open_prog(s,i);
+	// Open MemoryMap.Communication
+	// This file will be used to send the memory map to TagMannager
+	
+	FILE * MemoryMap;
+	MemoryMap=fopen("./Data/MemoryMap.Communication","w");
+
+	if (MemoryMap==NULL) {
+		log_message(LOG_FILE,"Cannot create the MemoryMap.Communication file.");
+		return;
+	}
+	fclose(MemoryMap);
+
+	for (i=0; strcmp(config[i].app, "")!=0; i++) {		
+		config[i].app_id= open_prog(config[i].app,config[i].app_ch);
+		printf("- %d  - %s - %d \n", i, config[i].app, config[i].app_id);		
 		if (config[i].app_id<0)
 		{
 			char msg[200];
-			sprintf(msg, "Cannot run: %s \n",s);
+			sprintf(msg, "Cannot run: %s \n",config[i].app);
 			log_message(LOG_FILE, msg);
 			return;
 		}
 		//printf("Waiting response -- \n");
-		espera_ok(msgqueue_id, i);
+		//espera_ok(msgqueue_id, i);
   	}
-
-	fclose (Archivo);
 	
 	//daemonize();
 
 	for (;;) {
-		sleep(10);
+		process_msgs(msgqueue_id);
 		}
 
 }
@@ -319,10 +472,41 @@ void terminate() {
 	// Get the PID of the resident part
 	fscanf (pFile, "%d", &pid);
         fclose (pFile);
+	
 	// Send SIGTERM to end the resident part
 	kill(pid,SIGTERM);
-	printf("Teminating resident part");
+	printf("Teminating resident part\n");
 }
+
+void view_states() {
+
+	int lfp,pid;
+	char lock_file[200];
+	strcpy(lock_file, TEMP_DIR);
+	strcat(lock_file, "/");
+	strcat(lock_file, LOCK_FILE);
+
+	// Search for the lock_file to know if FreeControl is loaded
+	FILE * pFile;
+	pFile = fopen (lock_file,"r");
+  	if (pFile<0) {
+		// If not loaded send error message
+		printf("FreeControl not loaded");
+		return;
+		}
+	// Get the PID of the resident part
+	fscanf (pFile, "%d", &pid);
+        fclose (pFile);
+	
+	// Send SIGTERM to end the resident part
+	//kill(pid,SIGTERM);
+	//printf("Teminating resident part");
+	printf("FreeControl:\n");
+	printf("      PID: %d\n", pid);
+	kill(pid,SIGUSR1);
+	sleep(1);
+}
+
 
 // ---------------------------------------------------
 // 		Starting point
@@ -375,6 +559,7 @@ int main (int argc, char* argv[])
 			// Option -v
 			// View states
 			printf("Option -v\n");
+			view_states();
 			break;
 		case 'h':
 			// Option -h
